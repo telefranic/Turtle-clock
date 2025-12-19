@@ -15,7 +15,7 @@ body {
   font-family: "Trebuchet MS", sans-serif;
 }
 
-/* ===== CLOCK ===== */
+/* ===== CLOCK (SHELL) ===== */
 .clock {
   position: relative;
   width: 300px;
@@ -24,17 +24,6 @@ body {
   background: radial-gradient(circle, #6fa86f, #3f6b3f);
   border: 10px solid #2f4f2f;
   box-shadow: inset 0 0 25px #1f3f1f;
- .clock {
-  position: relative;
-  width: 300px;
-  height: 300px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #6fa86f, #3f6b3f);
-  border: 10px solid #2f4f2f;
-  box-shadow: inset 0 0 25px #1f3f1f;
-  /* overflow: hidden;  ← REMOVE THIS */
-}
-
 }
 
 /* Shell scutes */
@@ -60,20 +49,39 @@ body {
   border-radius: 50% 50% 45% 45%;
   box-shadow: inset 0 0 10px #1f3f1f;
   animation: headBob 4s ease-in-out infinite;
+  z-index: 3;
 }
 
-.head::before, .head::after {
-  content: "";
+/* Eyes */
+.eye {
   position: absolute;
   top: 20px;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   background: #1f2f1f;
   border-radius: 50%;
+  animation: blink 5s infinite;
 }
 
-.head::before { left: 22px; }
-.head::after  { right: 22px; }
+.eye.left  { left: 22px; }
+.eye.right { right: 22px; }
+
+/* Mouth */
+.mouth {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  width: 18px;
+  height: 6px;
+  border-radius: 0 0 10px 10px;
+  background: #1f2f1f;
+  transform: translateX(-50%);
+}
+
+@keyframes blink {
+  0%, 95%, 100% { transform: scaleY(1); }
+  97% { transform: scaleY(0.1); }
+}
 
 @keyframes headBob {
   0%,100% { transform: translateY(0); }
@@ -92,6 +100,7 @@ body {
   box-shadow: inset 0 0 10px #1f3f1f;
   transform-origin: top center;
   animation: tailWiggle 3s ease-in-out infinite;
+  z-index: 1;
 }
 
 @keyframes tailWiggle {
@@ -106,6 +115,7 @@ body {
   border-radius: 50%;
   box-shadow: inset 0 0 10px #1f3f1f;
   animation: paddle 4s ease-in-out infinite;
+  z-index: 2;
 }
 
 .flipper.left {
@@ -141,24 +151,12 @@ body {
   100% { transform: rotate(0deg); }
 }
 
-/* ===== NUMBERS ===== */
-.number span {
-  position: absolute;
-  background: #4f7f4f;
-  color: #eaf5e1;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-weight: bold;
-  transform: translate(-50%, -50%);
-}
-
-/* ===== HANDS ===== */
+/* ===== CLOCK HANDS ===== */
 .hand {
   position: absolute;
   top: 50%;
   left: 50%;
   transform-origin: 0% 50%;
-  border-radius: 4px;
 }
 
 .hour   { width: 35%; height: 6px; background: #2b2b2b; }
@@ -184,7 +182,6 @@ body {
   text-align: center;
   font-size: 20px;
   color: #eaf5e1;
-  letter-spacing: 2px;
   background: rgba(0,0,0,0.25);
   padding: 6px 0;
   border-radius: 12px;
@@ -193,17 +190,16 @@ body {
 /* ===== BUBBLES ===== */
 .bubble {
   position: absolute;
-  bottom: 70px;
-  left: 50%;
   background: rgba(200,240,255,0.8);
   border-radius: 50%;
   pointer-events: none;
   animation: bubbleUp 3s ease-out forwards;
+  z-index: 4;
 }
 
 @keyframes bubbleUp {
   from { transform: translateY(0); opacity: 1; }
-  to { transform: translateY(-140px); opacity: 0; }
+  to { transform: translateY(-120px); opacity: 0; }
 }
 </style>
 </head>
@@ -212,8 +208,14 @@ body {
 
 <div class="clock" id="clock">
 
-  <!-- Head & Tail -->
-  <div class="head"></div>
+  <!-- Head -->
+  <div class="head" id="head">
+    <div class="eye left"></div>
+    <div class="eye right"></div>
+    <div class="mouth" id="mouth"></div>
+  </div>
+
+  <!-- Tail -->
   <div class="tail"></div>
 
   <!-- Flippers -->
@@ -223,7 +225,7 @@ body {
   <div class="flipper bottom"></div>
 
   <!-- Digital time -->
-  <div class="digital" id="digitalTime">00:00:00 AM</div>
+  <div class="digital" id="digitalTime"></div>
 
   <!-- Hands -->
   <div class="hand hour" id="hour"></div>
@@ -234,35 +236,27 @@ body {
 
 <script>
 const clock = document.getElementById("clock");
+const mouth = document.getElementById("mouth");
 
-/* Numbers */
-for (let i = 1; i <= 12; i++) {
-  const span = document.createElement("span");
-  span.textContent = i;
-
-  const angle = (i / 12) * 2 * Math.PI;
-  const r = 130;
-
-  span.style.left = 150 + r * Math.sin(angle) + "px";
-  span.style.top  = 150 - r * Math.cos(angle) + "px";
-
-  const wrap = document.createElement("div");
-  wrap.className = "number";
-  wrap.appendChild(span);
-  clock.appendChild(wrap);
-}
-
-/* Bubbles */
+/* Bubble from mouth */
 function createBubble() {
   const b = document.createElement("div");
   b.className = "bubble";
+
   const size = Math.random() * 6 + 6;
   b.style.width = b.style.height = size + "px";
+
+  const mouthRect = mouth.getBoundingClientRect();
+  const clockRect = clock.getBoundingClientRect();
+
+  b.style.left = (mouthRect.left - clockRect.left + mouthRect.width / 2) + "px";
+  b.style.top  = (mouthRect.top - clockRect.top) + "px";
+
   clock.appendChild(b);
   setTimeout(() => b.remove(), 3000);
 }
 
-/* Clock logic */
+/* Clock update */
 function updateClock() {
   const n = new Date();
   let h = n.getHours();
